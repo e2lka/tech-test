@@ -29,13 +29,13 @@ namespace Platformer.Mechanics
         public float jumpTakeOffSpeed = 7;
 
         public JumpState jumpState = JumpState.Grounded;
+
         private bool stopJump;
         /*internal new*/ public Collider2D collider2d;
         /*internal new*/ public AudioSource audioSource;
         public Health health;
         public bool controlEnabled = true;
 
-        bool jump;
         Vector2 move;
         SpriteRenderer spriteRenderer;
         internal Animator animator;
@@ -66,13 +66,11 @@ namespace Platformer.Mechanics
             if (controlEnabled)
             {
                 move.x = m_MoveAction.ReadValue<Vector2>().x;
-                if (jumpState == JumpState.Grounded && m_JumpAction.WasPressedThisFrame())
-                    jumpState = JumpState.PrepareToJump;
+                if (m_JumpAction.WasPressedThisFrame())
+                    StartJumping();
+
                 else if (m_JumpAction.WasReleasedThisFrame())
-                {
-                    stopJump = true;
-                    Schedule<PlayerStopJump>().player = this;
-                }
+                    StopJumping();
             }
             else
             {
@@ -82,14 +80,24 @@ namespace Platformer.Mechanics
             base.Update();
         }
 
+        public void StartJumping()
+        {
+            if (jumpState == JumpState.Grounded)
+                jumpState = JumpState.PrepareToJump;
+        }
+
+        public void StopJumping()
+        {
+            stopJump = true;
+            Schedule<PlayerStopJump>().player = this;
+        }
+
         void UpdateJumpState()
         {
-            jump = false;
             switch (jumpState)
             {
                 case JumpState.PrepareToJump:
                     jumpState = JumpState.Jumping;
-                    jump = true;
                     stopJump = false;
                     break;
                 case JumpState.Jumping:
@@ -114,10 +122,9 @@ namespace Platformer.Mechanics
 
         protected override void ComputeVelocity()
         {
-            if (jump && IsGrounded)
+            if (jumpState == JumpState.Jumping && IsGrounded)
             {
                 velocity.y = jumpTakeOffSpeed * model.jumpModifier;
-                jump = false;
             }
             else if (stopJump)
             {
